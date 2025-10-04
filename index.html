@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Rasm fonini olib tashlash</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f2f2f2;
+      padding: 50px;
+    }
+    h1 {
+      font-size: 28px;
+      color: #333;
+    }
+    .container {
+      background: #fff;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: inline-block;
+      width: 600px;
+    }
+    input[type="file"] {
+      margin: 20px 0;
+      padding: 10px;
+      border: 2px dashed #888;
+      border-radius: 10px;
+      background: #fafafa;
+      width: 80%;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #43a047;
+    }
+    img {
+      margin-top: 20px;
+      max-width: 100%;
+      border-radius: 10px;
+    }
+    a.download-btn {
+      display: inline-block;
+      margin-top: 15px;
+      background: #2196F3;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+    }
+    a.download-btn:hover {
+      background: #1976D2;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Xush kelibsiz</h1>
+    <p>Rasmingizni kiriting</p>
+    <input type="file" id="fileInput" accept="image/*">
+    <br>
+    <button onclick="uploadImage()">Rasmni fon qilish</button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function uploadImage() {
+      const fileInput = document.getElementById('fileInput');
+      const resultDiv = document.getElementById('result');
+      if (!fileInput.files.length) {
+        alert('Iltimos, rasm tanlang.');
+        return;
+      }
+
+      resultDiv.innerHTML = '<p>⏳ Fon olib tashlanmoqda...</p>';
+
+      const formData = new FormData();
+      formData.append('image', fileInput.files[0]);
+
+      const response = await fetch('https://api.pixian.ai/api/v2/remove-background', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Basic ' + btoa('px66r532327v29k:nqkt9sml4ccvqotstlls7jk4btc935vjf3uu9454dc34oamqud5i')
+        },
+        body: formData
+      });
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.src = url;
+      img.width = 1920; // 1920 пиксел кенгликда
+
+      resultDiv.innerHTML = `
+        <h3>✅ Natija tayyor:</h3>
+        <img src="${url}" alt="Natija">
+        <br>
+        <a href="${url}" download="fon_siz_rasm.png" class="download-btn">⬇️ Yuklab olish</a>
+      `;
+    }
+  </script>
+
+</body>
+</html>
