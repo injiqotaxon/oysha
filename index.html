@@ -1,282 +1,142 @@
+import express from "express";
+import fetch from "node-fetch";
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// API калит ва манбалар
+const OPENWEATHER_KEY = "7fd7625b5eb3747e1ec5ee7d10c64fc9";
+const CBU_JSON = "https://cbu.uz/oz/arkhiv-kursov-valyut/json/";
+
+// Асосий саҳифа (HTML)
+app.get("/", (req, res) => {
+  res.send(`
 <!doctype html>
 <html lang="uz">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Курслар • Об-ҳаво • Соат — Tashkent</title>
-  <style>
-    /* Содда ва замонавий дизайн */
-    :root{
-      --bg:#0f172a; --card:#0b1220; --accent:#06b6d4; --muted:#94a3b8;
-      color-scheme: dark;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    }
-    *{box-sizing:border-box}
-    body{margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
-         background:linear-gradient(180deg,#071126 0%, #071a2b 60%); padding:28px;}
-    .wrap{width:100%;max-width:980px}
-    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-    h1{margin:0;color:#fff;font-size:20px;letter-spacing:0.2px}
-    .small{color:var(--muted);font-size:13px}
-    .grid{display:grid;grid-template-columns:1fr 340px;gap:16px}
-    .left{display:grid;grid-template-rows:auto 1fr;gap:16px}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6); color:#e6eef6}
-    .rates-list .row{display:flex;justify-content:space-between;padding:12px 8px;border-radius:8px;}
-    .rates-list .row + .row{margin-top:8px}
-    .currency{font-weight:600}
-    .value{font-weight:700;font-size:18px}
-    .top-line{display:flex;justify-content:space-between;align-items:center}
-    .controls{display:flex;gap:8px}
-    button{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:10px;color:#dbeafe;cursor:pointer}
-    button.primary{background:linear-gradient(90deg,var(--accent),#7c3aed);border:0}
-    .weather-center{text-align:center}
-    .temp{font-size:36px;font-weight:700;margin-top:6px}
-    .desc{color:var(--muted);margin-top:4px}
-    .meta{display:flex;gap:12px;margin-top:12px;color:var(--muted);font-size:13px}
-    footer{margin-top:14px;text-align:center;color:var(--muted);font-size:13px}
-    .clock{font-weight:700;color:#fff}
-    /* Responsive */
-    @media (max-width:880px){ .grid{grid-template-columns:1fr; } .left{order:2} }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Об-ҳаво ва Валюта курслари</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --accent:#38bdf8; --text:#fff;
+  }
+  body{margin:0;font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text);padding:20px;}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+  h1{margin:0;font-size:28px;}
+  .clock{font-size:20px;font-weight:600;}
+  .section{background:var(--card);padding:20px;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-bottom:20px;}
+  .title{font-size:22px;font-weight:600;margin-bottom:12px;color:var(--accent);}
+  .weather-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+  .city{background:rgba(255,255,255,0.05);padding:12px;border-radius:10px;text-align:center;}
+  .city h3{margin:0;font-size:18px;}
+  .city .temp{font-size:28px;font-weight:700;margin:6px 0;}
+  table{width:100%;border-collapse:collapse;margin-top:10px;}
+  td{padding:8px;font-size:16px;}
+  td:last-child{text-align:right;}
+  .footer{text-align:center;color:#a1aab8;font-size:13px;margin-top:30px;}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>Курслар • Об-ҳаво • Соат — Tashkent</h1>
-      <div class="small">
-        <div class="clock" id="clock">--:--:--</div>
-        <div class="small" id="last-sync" style="text-align:right">янгиланиш: —</div>
-      </div>
-    </header>
+<header>
+  <h1>Об-ҳаво</h1>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
 
-    <div class="grid">
-      <div class="left">
-        <section class="card rates-card">
-          <div class="top-line">
-            <div>
-              <div class="small">Центр. банк (cbu.uz)</div>
-              <strong style="font-size:16px">Валюта курслари</strong>
-            </div>
-            <div class="controls">
-              <button id="refresh-all">Янгилаш</button>
-              <button class="primary" id="toggle-auto">Авто: ўчирилган</button>
-            </div>
-          </div>
+<div class="section">
+  <div class="title">Барча вилоятлар</div>
+  <div class="weather-grid" id="weather"></div>
+</div>
 
-          <div style="margin-top:12px" class="rates-list card-inner" id="rates-list">
-            <!-- курслар шу ерда ҳосил бўлади -->
-            <div class="small" id="rates-loading">Юкланмоқда...</div>
-          </div>
+<div class="section">
+  <div class="title">Курслар</div>
+  <table id="rates"></table>
+</div>
 
-          <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
-            <div class="small">Манба: cbu.uz / архив (JSON)</div>
-            <div class="small"><span id="rates-date">—</span></div>
-          </div>
-        </section>
+<div class="footer">
+  © 2025 KursWeather. Маълумотлар манбалари: CBU.uz ва OpenWeather.
+</div>
 
-        <section class="card" style="margin-top:16px">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <div class="small">Қўшимча маълумот</div>
-              <strong>Сервер / Браузер вақтлари</strong>
-            </div>
-            <div class="small" id="server-time">—</div>
-          </div>
-          <div style="margin-top:10px;color:var(--muted);font-size:13px">
-            Агар cbu.uzга браузердан тўғри мурожаат CORS билан блокланса, <code>CORS_PROXY</code> орқали ўтказинг.
-          </div>
-        </section>
-      </div>
+<script>
+function startClock(){
+  function t(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('uz-UZ',{hour12:false});}
+  t(); setInterval(t,1000);
+}
 
-      <aside>
-        <section class="card weather-card weather-center">
-          <div class="small">Об-ҳаво — OpenWeather</div>
-          <div style="display:flex;justify-content:center;gap:10px;align-items:center;margin-top:8px">
-            <div id="weather-icon" style="width:64px;height:64px"></div>
-            <div style="text-align:left">
-              <div id="weather-place" style="font-weight:700">Tashkent</div>
-              <div id="weather-desc" class="desc">—</div>
-            </div>
-          </div>
-          <div class="temp" id="weather-temp">—°C</div>
-          <div class="meta">
-            <div id="weather-wind">шамол: — м/с</div>
-            <div id="weather-hum">намлик: —%</div>
-          </div>
-          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
-            <button id="refresh-weather">Янгилаш</button>
-          </div>
-        </section>
-      </aside>
-    </div>
+async function loadWeather(){
+  const res = await fetch('/weather');
+  const data = await res.json();
+  const el = document.getElementById('weather');
+  el.innerHTML='';
+  data.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='city';
+    d.innerHTML=\`<h3>\${c.name}</h3><div class="temp">\${c.temp}°C</div><div>\${c.desc}</div>\`;
+    el.appendChild(d);
+  });
+}
 
-    <footer class="small">
-      Тайёр код — cbu.uz (архив JSON) + OpenWeather (API калит сизнинг томонидан киритилди). &nbsp;
-      <span id="note" style="color:var(--muted)"></span>
-    </footer>
-  </div>
+async function loadRates(){
+  const res = await fetch('/rates');
+  const data = await res.json();
+  const el = document.getElementById('rates');
+  el.innerHTML='';
+  data.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=\`<td>\${r.Ccy}</td><td>\${Number(r.Rate).toLocaleString()} UZS</td>\`;
+    el.appendChild(tr);
+  });
+}
 
-  <script>
-    /*******************************************************
-     * Теҳник маълумотлар — ўзгартиринг ёки қолдиринг
-     *******************************************************/
-    const CBU_JSON = 'https://cbu.uz/oz/arkhiv-kursov-valyut/json/'; // cbu.uz архив JSON
-    const OPENWEATHER_KEY = '7fd7625b5eb3747e1ec5ee7d10c64fc9'; // сиз берган калит
-    const CITY = 'Tashkent'; // сизнинг шаҳар
-    const TARGET_CURRENCIES = ['USD','EUR','RUB','GBP']; // кўрсатмоқчи бўлган валюталар
-    const RATES_REFRESH_MS = 60_000; // валюта янгилаш оралиғи (1 дақ)
-    const WEATHER_REFRESH_MS = 5 * 60_000; // об-ҳаво (5 дақ)
-    // Агар браузерда CORS билан блокланса, шу ерга прокси киритинг (масалан: 'https://your-proxy.example.com/')
-    // Прокси керак бўлмаса бошқача қолдиринг: ''
-    const CORS_PROXY = ''; // '' ёки 'https://cors-anywhere.herokuapp.com/'
-
-    /**************** UI элементлар ****************/
-    const ratesListEl = document.getElementById('rates-list');
-    const ratesDateEl = document.getElementById('rates-date');
-    const ratesLoadingEl = document.getElementById('rates-loading');
-    const lastSyncEl = document.getElementById('last-sync');
-    const serverTimeEl = document.getElementById('server-time');
-    const clockEl = document.getElementById('clock');
-    const toggleAutoBtn = document.getElementById('toggle-auto');
-    const refreshAllBtn = document.getElementById('refresh-all');
-
-    const weatherPlaceEl = document.getElementById('weather-place');
-    const weatherTempEl = document.getElementById('weather-temp');
-    const weatherDescEl = document.getElementById('weather-desc');
-    const weatherWindEl = document.getElementById('weather-wind');
-    const weatherHumEl = document.getElementById('weather-hum');
-    const weatherIconEl = document.getElementById('weather-icon');
-    const refreshWeatherBtn = document.getElementById('refresh-weather');
-
-    /**************** Утилиталар ****************/
-    function formatNumber(n){ return Number(n).toLocaleString(undefined, {maximumFractionDigits:4}) }
-    function nowIso(){ return new Date().toISOString() }
-
-    /**************** Соат — браузер вақти ****************/
-    function startClock(){
-      function tick(){
-        const now = new Date();
-        clockEl.textContent = now.toLocaleTimeString('ru-RU', {hour12:false});
-      }
-      tick();
-      setInterval(tick, 1000);
-    }
-
-    /**************** Валюта курслари: cbu.uz ****************/
-    async function fetchCbuRates(){
-      try {
-        ratesLoadingEl.textContent = 'Юкланмоқда...';
-        const url = (CORS_PROXY || '') + CBU_JSON;
-        const r = await fetch(url);
-        if (!r.ok) throw new Error('Сервер жавоб бермади: ' + r.status);
-        const data = await r.json();
-        // data — массив объектлар, ҳар бири: { Ccy, Code, Rate, Diff, CcyNm_UZ,... }
-        // Керакли валюталарни фильтрлаймиз
-        const filtered = data.filter(item => TARGET_CURRENCIES.includes(item.Ccy));
-        // Агар UZS керак бўлса, юзлик: агар cbu APIда UZS бўлмаса, UZSни 1 деб кўрсатамиз
-        ratesListEl.innerHTML = '';
-        TARGET_CURRENCIES.forEach(code => {
-          const item = filtered.find(x => x.Ccy === code);
-          const rate = item ? item.Rate : null;
-          const name = item ? (item.CcyNm_UZ || item.CcyNm_RU || item.Ccy) : code;
-          const row = document.createElement('div');
-          row.className = 'row';
-          row.innerHTML = `
-            <div class="currency">${name} <span style="color:var(--muted);font-weight:500">(${code})</span></div>
-            <div class="value">${rate ? formatNumber(rate) : '—'}</div>
-          `;
-          ratesListEl.appendChild(row);
-        });
-        // санани олиш (бир нечта форматлар бўлиши мумкин)
-        // cbu JSON-да "Date" ёки "Update" каби майдон бўлмаслиги мумкин — шундай экан браузер вақтни кўрсатамиз
-        ratesDateEl.textContent = nowIso().slice(0,19).replace('T',' ');
-        ratesLoadingEl.textContent = '';
-        lastSyncEl.textContent = 'янгиланган: ' + new Date().toLocaleString();
-        serverTimeEl.textContent = (new Date()).toLocaleString();
-      } catch (err) {
-        console.error('fetchCbuRates error', err);
-        ratesListEl.innerHTML = `<div class="small" style="color:#fca5a5">Курсларни олишда хатолик: ${err.message}</div>`;
-      }
-    }
-
-    /**************** Об-ҳаво: OpenWeather ****************/
-    async function fetchWeather(){
-      try {
-        weatherTempEl.textContent = '—°C';
-        weatherDescEl.textContent = 'юкланмоқда...';
-        const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(CITY)}&units=metric&appid=${OPENWEATHER_KEY}`;
-        const r = await fetch(url);
-        if (!r.ok) throw new Error('Weather API жавоб бермади: ' + r.status);
-        const j = await r.json();
-        // жавоб мисоли: { weather:[{icon,description}], main:{temp,humidity}, wind:{speed}, name:... }
-        const place = j.name || CITY;
-        const temp = j.main && j.main.temp;
-        const hum = j.main && j.main.humidity;
-        const wind = j.wind && j.wind.speed;
-        const desc = j.weather && j.weather[0] && j.weather[0].description;
-        const icon = j.weather && j.weather[0] && j.weather[0].icon;
-        weatherPlaceEl.textContent = place;
-        weatherTempEl.textContent = temp !== undefined ? Math.round(temp) + '°C' : '—°C';
-        weatherDescEl.textContent = desc ? desc.charAt(0).toUpperCase() + desc.slice(1) : '—';
-        weatherWindEl.textContent = `шамол: ${wind !== undefined ? wind + ' м/с' : '—'}`;
-        weatherHumEl.textContent = `намлик: ${hum !== undefined ? hum + '%' : '—'}`;
-        // иконка (OpenWeather иконкаларини кўрсатамиз)
-        if (icon) {
-          weatherIconEl.innerHTML = `<img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="${desc}" style="width:64px;height:64px">`;
-        } else {
-          weatherIconEl.innerHTML = '';
-        }
-        lastSyncEl.textContent = 'янгиланган: ' + new Date().toLocaleString();
-      } catch (err) {
-        console.error('fetchWeather error', err);
-        weatherDescEl.textContent = 'Об-ҳавони олишда хатолик';
-        weatherIconEl.innerHTML = '';
-      }
-    }
-
-    /**************** Авто янгилаш ва бошқариш ****************/
-    let ratesInterval = null;
-    let weatherInterval = null;
-    let autoMode = false;
-
-    function enableAuto(){
-      if (!ratesInterval) ratesInterval = setInterval(fetchCbuRates, RATES_REFRESH_MS);
-      if (!weatherInterval) weatherInterval = setInterval(fetchWeather, WEATHER_REFRESH_MS);
-      toggleAutoBtn.textContent = 'Авто: ёқилган';
-      toggleAutoBtn.style.background = 'linear-gradient(90deg,var(--accent),#7c3aed)';
-      autoMode = true;
-    }
-    function disableAuto(){
-      if (ratesInterval){ clearInterval(ratesInterval); ratesInterval = null; }
-      if (weatherInterval){ clearInterval(weatherInterval); weatherInterval = null; }
-      toggleAutoBtn.textContent = 'Авто: ўчирилган';
-      toggleAutoBtn.style.background = 'transparent';
-      autoMode = false;
-    }
-
-    /**************** Инициализация ****************/
-    function init(){
-      startClock();
-      fetchCbuRates();
-      fetchWeather();
-      // Автони уичтирилган ҳолда бошлаймиз
-      disableAuto();
-
-      // Тугмалар
-      toggleAutoBtn.addEventListener('click', () => {
-        if (autoMode) disableAuto(); else enableAuto();
-      });
-      refreshAllBtn.addEventListener('click', () => { fetchCbuRates(); fetchWeather(); });
-      refreshWeatherBtn.addEventListener('click', fetchWeather);
-
-      // Манба ҳақида: агар CORS_PROXY кўрсатилган бўлса, кўрсатамиз
-      if (CORS_PROXY) {
-        document.getElementById('note').textContent = 'CORS прокси фаол: ' + CORS_PROXY;
-      }
-    }
-
-    // Ишга тушириш
-    init();
-  </script>
+startClock();
+loadWeather();
+loadRates();
+setInterval(loadWeather, 5*60*1000);
+setInterval(loadRates, 2*60*1000);
+</script>
 </body>
 </html>
+`);
+});
+
+// Об-ҳаво маълумотлари
+app.get("/weather", async (req, res) => {
+  const cities = [
+    "Tashkent","Samarkand","Bukhara","Fergana","Namangan",
+    "Andijan","Nukus","Urgench","Qarshi","Jizzakh",
+    "Navoi","Termez","Kokand","Sirdaryo"
+  ];
+
+  try {
+    const results = await Promise.all(
+      cities.map(async (city) => {
+        const url = \`https://api.openweathermap.org/data/2.5/weather?q=\${city}&units=metric&lang=uz&appid=\${OPENWEATHER_KEY}\`;
+        const r = await fetch(url);
+        const d = await r.json();
+        return {
+          name: city,
+          temp: Math.round(d.main.temp),
+          desc: d.weather[0].description
+        };
+      })
+    );
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({error: "Weather API xatosi"});
+  }
+});
+
+// Валюта маълумотлари
+app.get("/rates", async (req, res) => {
+  try {
+    const r = await fetch(CBU_JSON);
+    const d = await r.json();
+    const filtered = d.filter(x => ["USD","EUR","RUB","GBP"].includes(x.Ccy));
+    res.json(filtered);
+  } catch (err) {
+    res.status(500).json({error: "CBU API xatosi"});
+  }
+});
+
+app.listen(PORT, () => console.log(\`🚀 Сервер ишлаяпти: http://localhost:\${PORT}\`));
